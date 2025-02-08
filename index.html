@@ -97,12 +97,38 @@
         backgroundMusic.loop = true;  // Makes the music loop continuously
         backgroundMusic.volume = 0.5; // Set volume to 50%
 
-        // Modify the event listeners to include music
+        // Add touch controls
+        canvas.addEventListener('touchstart', function(event) {
+            event.preventDefault();  // Prevent scrolling
+            if (!gameStarted) {
+                gameStarted = true;
+                backgroundMusic.play().catch(function() {
+                    // Handle autoplay restriction
+                    console.log("Audio autoplay prevented");
+                });
+                gameLoop();
+            } else if (gameOver) {
+                resetGame();
+            } else {
+                if (!player.jumping) {
+                    player.jumping = true;
+                    player.doubleJump = true;
+                    player.velocity = player.jumpSpeed;
+                } else if (player.doubleJump) {
+                    player.velocity = player.jumpSpeed;
+                    player.doubleJump = false;
+                }
+            }
+        }, false);
+
+        // Modify audio start to handle autoplay restrictions
         document.addEventListener('keydown', function(event) {
             if (event.code === 'Enter') {
                 if (!gameStarted) {
                     gameStarted = true;
-                    backgroundMusic.play();  // Start music when game starts
+                    backgroundMusic.play().catch(function() {
+                        console.log("Audio autoplay prevented");
+                    });
                     gameLoop();
                 } else if (gameOver) {
                     resetGame();
