@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Jumping Game</title>
+    <style>
+        canvas {
+            border: 1px solid black;
+            display: block;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas" width="800" height="400"></canvas>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Game objects
+        const player = {
+            x: 50,
+            y: 300,
+            width: 82,    // Increased from 75 to 82 (approximately 10% larger)
+            height: 82,   // Increased from 75 to 82 (approximately 10% larger)
+            jumping: false,
+            doubleJump: false,
+            jumpSpeed: -20,
+            gravity: 0.6,
+            velocity: 0,
+            lives: 3
+        };
+
+        const obstacles = [
+            {
+                x: canvas.width,
+                y: 300,
+                width: 75,
+                height: 75,
+                speed: 5,
+                image: 'Kye.png'
+            },
+            {
+                x: canvas.width + 400,
+                y: 300,
+                width: 75,
+                height: 75,
+                speed: 4,
+                image: 'Curtis.png'
+            },
+            {
+                x: canvas.width + 800,
+                y: 300,
+                width: 75,
+                height: 75,
+                speed: 6,
+                image: 'Darcy.png'
+            },
+            {
+                x: canvas.width + 1200,
+                y: 300,
+                width: 75,
+                height: 75,
+                speed: 5.5,
+                image: 'Luna.png'
+            }
+        ];
+
+        let score = 0;
+        let gameOver = false;
+
+        // Load images
+        const startBackground = new Image();
+        startBackground.src = 'background.jpg';
+
+        const gameBackground = new Image();
+        gameBackground.src = 'desert.jpg';
+
+        const playerImg = new Image();
+        playerImg.src = 'AJ.png';
+
+        const obstacleImages = {
+            'Kye.png': new Image(),
+            'Curtis.png': new Image(),
+            'Darcy.png': new Image(),
+            'Luna.png': new Image()
+        };
+        
+        obstacleImages['Kye.png'].src = 'Kye.png';
+        obstacleImages['Curtis.png'].src = 'Curtis.png';
+        obstacleImages['Darcy.png'].src = 'Darcy.png';
+        obstacleImages['Luna.png'].src = 'Luna.png';
+
+        let gameStarted = false;  // New variable to track game state
+
+        // Add audio element at the top with other game objects
+        const backgroundMusic = new Audio('background.mp3');
+        backgroundMusic.loop = true;  // Makes the music loop continuously
+        backgroundMusic.volume = 0.5; // Set volume to 50%
+
+        // Modify the event listeners to include music
+        document.addEventListener('keydown', function(event) {
+            if (event.code === 'Enter') {
+                if (!gameStarted) {
+                    gameStarted = true;
+                    backgroundMusic.play();  // Start music when game starts
+                    gameLoop();
+                } else if (gameOver) {
+                    resetGame();
+                }
+            }
+            if (event.code === 'Space' && gameStarted) {
+                if (!player.jumping) {
+                    player.jumping = true;
+                    player.doubleJump = true;
+                    player.velocity = player.jumpSpeed;
+                } else if (player.doubleJump) {
+                    player.velocity = player.jumpSpeed;
+                    player.doubleJump = false;
+                }
+            }
+        });
+
+        let fadeInOpacity = 0;
+        let showSecondMessage = false;
+        let showIntroFade = false;
+        let introFadeOpacity = 0;
+
+        const familyImg = new Image();
+        familyImg.src = 'family.png';
+
+        function drawStartScreen() {
+            ctx.drawImage(startBackground, 0, 0, canvas.width, canvas.height);
+        }
+
+        function update() {
+            if (gameOver) return;
+
+            // Update player
+            if (player.jumping) {
+                player.velocity += player.gravity;
+                player.y += player.velocity;
+
+                if (player.y >= 300) {
+                    player.y = 300;
+                    player.jumping = false;
+                    player.velocity = 0;
+                }
+            }
+
+            // Update obstacles
+            obstacles.forEach(obstacle => {
+                obstacle.x -= obstacle.speed;
+                if (obstacle.x < -obstacle.width) {
+                    obstacle.x = canvas.width + Math.random() * 300;
+                    score++;
+                }
+
+                // Collision detection
+                if (player.x < obstacle.x + obstacle.width &&
+                    player.x + player.width > obstacle.x &&
+                    player.y < obstacle.y + obstacle.height &&
+                    player.y + player.height > obstacle.y) {
+                    player.lives--;
+                    if (player.lives <= 0) {
+                        handleGameOver();
+                    } else {
+                        obstacle.x = canvas.width + Math.random() * 300;
+                    }
+                }
+            });
+        }
+
+        function draw() {
+            if (!gameStarted) {
+                drawStartScreen();
+                return;
+            }
+
+            // Clear the canvas first
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw background with slightly higher opacity
+            ctx.globalAlpha = 0.3;
+            ctx.drawImage(gameBackground, 0, 0, canvas.width, canvas.height);
+            ctx.globalAlpha = 1.0;
+
+            // Draw rotated and enlarged player
+            ctx.save();
+            ctx.translate(player.x + player.width/2, player.y + player.height/2);
+            ctx.rotate(45 * Math.PI / 180);
+            ctx.drawImage(playerImg, 
+                -player.width/2, -player.height/2,
+                player.width, player.height
+            );
+            ctx.restore();
+
+            // Draw obstacles
+            obstacles.forEach(obstacle => {
+                ctx.drawImage(obstacleImages[obstacle.image], obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+            });
+
+            // Draw birthday message in center top with purple color
+            ctx.fillStyle = 'purple';
+            ctx.font = 'bold 36px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('Happy Birthday AJ!', canvas.width/2, 50);
+            
+            // Draw score and lives in corners (also in purple)
+            ctx.font = '24px Arial';
+            ctx.textAlign = 'left';
+            ctx.fillText('Lives: ' + player.lives, 20, 40);
+            ctx.textAlign = 'right';
+            ctx.fillText('Score: ' + score, canvas.width - 20, 40);
+
+            if (gameOver) {
+                if (showIntroFade) {
+                    ctx.globalAlpha = introFadeOpacity;
+                    drawStartScreen();
+                    ctx.globalAlpha = 1.0;
+                } else {
+                    ctx.fillStyle = 'black';
+                    ctx.font = '48px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('Game Over...', canvas.width/2, canvas.height/2);
+
+                    if (showSecondMessage) {
+                        ctx.globalAlpha = fadeInOpacity;
+                        ctx.fillText('...not yet...', canvas.width/2, canvas.height/2 + 60);
+                        ctx.font = '36px Arial';
+                        ctx.fillText("Here's to another 50 years!", canvas.width/2, canvas.height/2 + 120);
+                        ctx.globalAlpha = 1.0;
+                    }
+                }
+            }
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            if (!gameOver) {
+                requestAnimationFrame(gameLoop);
+            } else {
+                requestAnimationFrame(draw);  // Continue drawing during game over sequence
+            }
+        }
+
+        function resetGame() {
+            player.y = 300;
+            player.jumping = false;
+            player.doubleJump = false;
+            player.velocity = 0;
+            player.lives = 3;
+            
+            obstacles.forEach((obstacle, index) => {
+                obstacle.x = canvas.width + (index * 400);
+            });
+            
+            score = 0;
+            gameOver = false;
+            gameStarted = true;
+            backgroundMusic.currentTime = 0;  // Reset music to beginning
+            backgroundMusic.play();  // Start music again
+            gameLoop();
+        }
+
+        function handleGameOver() {
+            gameOver = true;
+            backgroundMusic.pause();
+            
+            // Start fade in sequence after 2 seconds
+            setTimeout(() => {
+                showSecondMessage = true;
+                let fadeInterval = setInterval(() => {
+                    fadeInOpacity += 0.02;
+                    if (fadeInOpacity >= 1) {
+                        clearInterval(fadeInterval);
+                        
+                        // Start fade to intro screen after another 2 seconds
+                        setTimeout(() => {
+                            showIntroFade = true;
+                            let introFadeInterval = setInterval(() => {
+                                introFadeOpacity += 0.02;
+                                if (introFadeOpacity >= 1) {
+                                    clearInterval(introFadeInterval);
+                                }
+                            }, 50);
+                        }, 2000);
+                    }
+                }, 50);
+            }, 2000);
+
+            // Keep the animation loop going during game over sequence
+            function gameOverLoop() {
+                draw();
+                requestAnimationFrame(gameOverLoop);
+            }
+            gameOverLoop();
+        }
+
+        // Start with the start screen
+        Promise.all([
+            new Promise(resolve => startBackground.onload = resolve),
+            new Promise(resolve => gameBackground.onload = resolve),
+            new Promise(resolve => playerImg.onload = resolve),
+            ...Object.values(obstacleImages).map(img => new Promise(resolve => img.onload = resolve))
+        ]).then(() => {
+            drawStartScreen();
+        });
+    </script>
+</body>
+</html> 
